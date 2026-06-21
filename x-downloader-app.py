@@ -170,7 +170,7 @@ def index():
         # Auth
         ui.label('Bearer Token').classes('text-xs font-semibold text-slate-500 uppercase tracking-wide')
         token_input = ui.input(
-            value=os.environ.get('X_BEARER_TOKEN', ''),
+            value=os.environ.get('X_BEARER_TOKEN', '').strip(),
             password=True,
             placeholder='paste token…',
         ).classes('w-full')
