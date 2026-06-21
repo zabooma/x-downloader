@@ -3,6 +3,7 @@
 A desktop web app for downloading and browsing posts from any public X (Twitter) account. Built with [NiceGUI](https://nicegui.io) and [Twarc2](https://twarc-project.readthedocs.io).
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
@@ -160,4 +161,4 @@ x-downloader/
 
 ## License
 
-MIT
+[MIT](LICENSE)
