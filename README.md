@@ -27,7 +27,7 @@ A desktop web app for downloading and browsing posts from any public X (Twitter)
 - **Python 3.10 or higher** — [python.org](https://python.org)
 - An **X Developer account** with a project app and a **Bearer Token**
   - Sign up at [developer.x.com](https://developer.x.com)
-  - The free tier is sufficient for basic use (~500K tweet reads/month)
+  - Requires a paid plan or prepaid credit balance — X no longer offers a free API tier
 
 ---
 
@@ -139,7 +139,8 @@ X API costs are driven by **tweet reads** — each post fetched counts against y
 - **Max 3200 posts** per account (X API limitation on user timelines).
 - The **Include ref. tweets** checkbox enables the `referenced_tweets.id` expansion, which fetches referenced tweet objects and counts them as additional reads. Leave it off if you only need the post type and text.
 - User lookups (`Look Up User`) consume a small number of reads per search.
-- The free tier provides enough quota for light personal use. For bulk downloads consider the Basic ($100/month) tier.
+- X no longer offers a free API tier. Access requires a paid plan (Basic at $100/month) or a prepaid credit balance. See [developer.x.com](https://developer.x.com) for current pricing.
+- If you hit your credit limit mid-fetch, the app will display however many posts were successfully retrieved before the cap was reached.
 
 ---
 
