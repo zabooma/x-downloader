@@ -1,0 +1,22 @@
+# Virtual environment
+.venv/
+
+# Claude Code local settings
+.claude/
+
+# Bearer token file
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# macOS
+.DS_Store
+
+# Editor
+.idea/
+.vscode/
+*.swp
