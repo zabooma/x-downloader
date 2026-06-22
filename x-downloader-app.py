@@ -35,7 +35,8 @@ def _lookup_user(client: Twarc2, username: str) -> dict | None:
     return users[0] if users else None
 
 
-def _fetch_timeline(client: Twarc2, user_id: str, start: date, end: date, max_results: int, include_refs: bool = False):
+def _fetch_timeline(client: Twarc2, user_id: str, username: str, start: date, end: date,
+                    max_results: int, include_refs: bool = False, archive: bool = False):
     posts: list[dict] = []
     tweet_map: dict = {}
     user_map: dict = {}
@@ -43,16 +44,21 @@ def _fetch_timeline(client: Twarc2, user_id: str, start: date, end: date, max_re
     expansions = 'in_reply_to_user_id'
     if include_refs:
         expansions = 'referenced_tweets.id,referenced_tweets.id.author_id,in_reply_to_user_id'
+    common = dict(
+        start_time=start.strftime('%Y-%m-%dT00:00:00Z'),
+        end_time=end.strftime('%Y-%m-%dT23:59:59Z'),
+        tweet_fields='id,text,created_at,public_metrics,referenced_tweets,in_reply_to_user_id,conversation_id',
+        expansions=expansions,
+        user_fields='username,name',
+    )
+    if archive:
+        # Full-archive search reaches the entire history, bypassing the
+        # timeline endpoint's ~3,200 most-recent cap. 500/request is its max.
+        pages = client.search_all(query=f'from:{username}', max_results=500, **common)
+    else:
+        pages = client.timeline(user_id, max_results=100, **common)
     try:
-        for response in client.timeline(
-            user_id,
-            max_results=100,
-            start_time=start.strftime('%Y-%m-%dT00:00:00Z'),
-            end_time=end.strftime('%Y-%m-%dT23:59:59Z'),
-            tweet_fields='id,text,created_at,public_metrics,referenced_tweets,in_reply_to_user_id,conversation_id',
-            expansions=expansions,
-            user_fields='username,name',
-        ):
+        for response in pages:
             includes = response.get('includes', {})
             for t in includes.get('tweets', []):
                 tweet_map[t['id']] = t
@@ -209,8 +215,41 @@ def index():
             include_refs_checkbox = ui.checkbox('Include ref. tweets').tooltip(
                 'Fetches the content of replied-to/quoted/retweeted posts (Context column). Uses more API credits.'
             )
+            archive_switch = ui.switch('Full archive').tooltip(
+                'Search the entire post history via the full-archive endpoint, not just the '
+                'most recent ~3,200. Slower and uses more API quota.'
+            )
             fetch_btn = ui.button('Fetch', icon='cloud_download') \
                          .props('unelevated color=primary')
+
+        # Explain the X API's hard 3,200-tweet reach so empty results on older
+        # dates aren't mistaken for a bug. Only relevant in timeline mode.
+        timeline_note = ui.label(
+            'Note: the X API only serves each account\'s ~3,200 most recent posts. '
+            'Dates only filter within that window — they can\'t reach further back. '
+            'For prolific accounts that window may be just a few months, so older '
+            'date ranges return nothing even when the profile shows many more posts. '
+            'Enable “Full archive” to reach the entire history.'
+        ).classes('text-xs text-slate-400 leading-snug -mt-1')
+
+        # Shown instead when archive mode is on.
+        archive_note = ui.label(
+            'Full-archive mode: searches the entire post history for the date range — '
+            'this reaches past the ~3,200 limit but is slower and consumes more API quota.'
+        ).classes('text-xs text-amber-600 leading-snug -mt-1')
+        archive_note.set_visibility(False)
+
+        def on_archive_toggle():
+            on = archive_switch.value
+            archive_note.set_visibility(on)
+            timeline_note.set_visibility(not on)
+            # Archive mode can return far more than 3,200; raise the ceiling.
+            max_results_input.props(f'max={200000 if on else 3200}')
+            if not on and (max_results_input.value or 0) > 3200:
+                max_results_input.value = 3200
+            max_results_input.update()
+
+        archive_switch.on_value_change(on_archive_toggle)
 
         # Progress + status
         progress = ui.linear_progress(show_value=False).classes('w-full').set_visibility(False)
@@ -350,11 +389,17 @@ def index():
                 progress.set_visibility(False)
                 return
 
+            archive = archive_switch.value
             progress.value = 0.3
-            status.text = f'Fetching posts for @{uname}…'
+            if archive:
+                status.text = (f'Searching the full archive for @{uname}… '
+                               'this can take a while for long histories.')
+            else:
+                status.text = f'Fetching posts for @{uname}…'
 
             posts, tweet_map, user_map, truncated = await run.io_bound(
-                _fetch_timeline, client, user['id'], start, end, int(max_results_input.value), include_refs_checkbox.value
+                _fetch_timeline, client, user['id'], uname, start, end,
+                int(max_results_input.value), include_refs_checkbox.value, archive
             )
 
             if not posts:
